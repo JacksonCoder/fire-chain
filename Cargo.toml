@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Jackson Lewis <st.japa6@gmail.com>"]
 [dependencies]
 json="0.11.13"
+clap="2.29.2"
+rust-crypto="0.2"
+tiny_http = "0.5.8"
+url = "1.6.0"

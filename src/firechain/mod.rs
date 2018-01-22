@@ -1,9 +1,9 @@
 pub mod enums;
 mod parser;
+mod crypto;
 use self::enums::FireChainStatus;
 use std::fs::File;
 use std::io::Read;
-use std;
 use self::parser::json_parse;
 extern crate json;
 use self::json::JsonValue;
@@ -17,7 +17,7 @@ pub fn setup_interface() {
 
 }
 
-pub fn chain_exists(chain: &ChainHandler) -> bool {
+pub fn chain_exists(chain: &Handler) -> bool {
     match chain.status {
         FireChainStatus::Unknown => false,
         FireChainStatus::Good => true,
@@ -25,19 +25,25 @@ pub fn chain_exists(chain: &ChainHandler) -> bool {
     }
 }
 
-pub struct ChainHandler {
+pub struct Handler {
     status: FireChainStatus,
-    input : ChainInput,
-    parsed: Vec<Transaction>,
+    input: Input,
+    transactions: Vec<Transaction>,
     version: Option<u32>
 }
 
-pub struct ChainInput {
+pub struct Input {
     res: String
 }
 
 pub struct Signature {
-    // Add stuff here later
+    pub_key: String,
+    msg: String,
+    hash: String
+}
+
+pub struct PKey {
+    key: String
 }
 
 pub struct Transaction {
@@ -56,35 +62,33 @@ fn json_read_ledger_file(json_obj: JsonValue) -> (Vec<Transaction>,u32) {
     (vec![],1) // Code will never reach here
 }
 
-impl ChainHandler {
-
-    pub fn new_unknown(input: ChainInput) -> ChainHandler {
-        ChainHandler {
+impl Handler {
+    pub fn new_unknown(input: Input) -> Handler {
+        Handler {
             status: Unknown,
             input: input,
-            parsed: vec![],
+            transactions: vec![],
             version: None
         }
     }
 
     pub fn parse(&mut self) {
         // Parse chain via JSON conversion
-        let json_obj = json_parse(self.input.res.as_str());
-        let (chain,version) = json_read_ledger_file(json_obj);
-        self.parsed = chain;
+        let json_obj = json_parse(self.input.get_result());
+        let (transaction_list, version) = json_read_ledger_file(json_obj);
+        self.transactions = transaction_list;
         self.version = Some(version);
     }
 }
 
-impl ChainInput {
-
-    pub fn new(s: &str) -> ChainInput {
+impl Input {
+    pub fn new(s: &str) -> Input {
         let mut file = File::open(s);
         match file {
             Ok(mut file) => {
                 let mut output = String::new();
                 file.read_to_string(& mut output);
-                return ChainInput {
+                return Input {
                     res: output
                 };
             },
@@ -95,5 +99,28 @@ impl ChainInput {
 
     pub fn get_result(&self) -> &str {
         self.res.as_str()
+    }
+}
+
+impl Signature {
+    pub fn new_from_hash(hash: String, public_key_list: Vec<PKey>, msg: String) -> Option<Signature> {
+        let pkey = crypto::match_signature(public_key_list, msg.as_str(), hash.as_str());
+        match pkey {
+            Some(key) => Some(Signature::new(hash, msg, key)),
+            None => None
+        }
+    }
+    pub fn new(hash: String, msg: String, pkey: PKey) -> Signature {
+        Signature {
+            hash: hash,
+            msg: msg,
+            pub_key: pkey.get_public()
+        }
+    }
+}
+
+impl PKey {
+    pub fn get_public(&self) -> String {
+        self.key.clone()
     }
 }
