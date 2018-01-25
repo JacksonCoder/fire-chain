@@ -2,10 +2,6 @@ mod firechain;
 mod server;
 
 extern crate clap;
-use firechain::setup_interface;
-use firechain::chain_exists;
-use firechain::Handler;
-use firechain::Input;
 use clap::{App, Arg, SubCommand, ArgMatches};
 
 extern crate tiny_http;
@@ -42,9 +38,6 @@ fn server(matches: ArgMatches) {
     for i in 0..4 {
         // Get local thread copy of server
         let server = server.clone();
-        // Get handler
-        let input = Input::new(ledger_file_path);
-        let handle = Handler::new_unknown(input);
 
         let guard = std::thread::spawn(move || {
             loop {
@@ -55,7 +48,7 @@ fn server(matches: ArgMatches) {
                 let rqurl = Url::parse(&format!("http://localhost:4545{}", rq.url())).unwrap();
                 let response = match rqurl.path() {
                     "/fetch" => {
-                        server::not_implemented()
+                        server::handle_fetch(rqurl.query_pairs())
                     },
                     _ => {
                         server::not_found()
